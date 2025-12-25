@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title id="gameTitle">Desktop Cleaner: KBBI Edition</title>
+
+<!-- Memuat Tailwind CSS dari CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Memuat File CSS Custom Kita -->
+<link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+<input type="text" id="hiddenMobileInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+<!-- AUDIO ELEMENTS -->
+<audio id="bgmAudio" loop>
+    <source src="https://commondatastorage.googleapis.com/codeskulptor-assets/Epoq-Lepidoptera.ogg" type="audio/ogg">
+</audio>
+
+<div class="game-container">
+    
+    <!-- HEADER -->
+    <div id="headerWrapper" class="dynamic-width-wrapper bg-gray-900/90 backdrop-blur p-2 rounded-lg shadow-xl border border-gray-700 mb-2 z-30">
+        <div class="grid grid-cols-3 gap-2 text-white text-xs sm:text-sm md:text-base items-center">
+            <div class="flex flex-col items-start gap-1">
+                <div id="scoreContainer" class="flex items-center">
+                    <svg class="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.95-.69l1.07-3.292z"></path></svg>
+                    <span data-lang-key="score" class="font-bold text-gray-300 mr-1">Skor:</span> 
+                    <span id="scoreDisplay" class="font-bold text-yellow-400">0</span>
+                    <span id="multiplierDisplay" class="combo-text hidden">x1</span>
+                </div>
+                <div id="stopwatchContainer" class="flex items-center hidden">
+                    <svg class="w-4 h-4 text-cyan-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span id="stopwatchDisplay" class="font-bold text-cyan-400 font-mono">00:00</span>
+                </div>
+                <div id="healthOrTimeContainer" class="flex items-center">
+                    <span id="healthOrTimeText" class="font-bold text-gray-300 mr-1">Nyawa:</span> 
+                    <span id="healthOrTimeValue" class="font-bold text-red-500">10</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center justify-center bg-black/50 rounded p-1 border border-gray-700 w-full">
+                <span data-lang-key="target" class="text-[10px] text-gray-500 uppercase tracking-widest">TARGET</span>
+                <span id="targetWordDisplay" class="font-bold text-sky-400 italic text-sm sm:text-lg truncate max-w-full" style="text-shadow: 0 0 10px rgba(56, 189, 248, 0.8);">...</span>
+                <div class="combo-bar-wrapper">
+                    <div id="comboBarFill" class="combo-fill"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-1">
+                <div class="flex items-center">
+                    <span data-lang-key="words" class="text-gray-400 mr-1 text-[10px] sm:text-xs">Kata:</span>
+                    <span id="wordsTypedDisplay" class="font-bold text-lime-400">0</span>
+                </div>
+                <div id="wpmContainer" class="flex items-center">
+                    <span data-lang-key="wpm" class="text-gray-400 mr-1 text-[10px] sm:text-xs">WPM:</span>
+                    <span id="wpmDisplay" class="font-bold text-purple-400">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CANVAS -->
+    <div id="canvasContainer" class="relative-canvas-wrapper mx-auto rounded-xl">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="crt-overlay"></div> 
+    </div>
+    
+    <!-- INPUT & PAUSE BUTTON (FOOTER) -->
+    <div id="footerWrapper" class="dynamic-width-wrapper flex flex-col gap-2 mb-1 z-30">
+        <div id="inputContainer" class="w-full bg-gray-900/90 backdrop-blur p-2 sm:p-3 rounded-lg shadow-xl border-4 border-gray-700 transition-colors duration-100 cursor-default">
+            <p class="text-white text-xs text-center mb-1">
+                <span data-lang-key="yourInput">Input</span> <span id="focusHintText" class="text-green-400 font-bold italic"></span>
+            </p>
+            <div id="userInputDisplay" class="text-xl sm:text-2xl font-mono tracking-wider h-8 flex justify-center items-center overflow-hidden">
+                <span id="inputPlaceholderText" class="text-gray-500 text-sm" data-lang-key="inputPlaceholder">Mulai Ketik...</span>
+            </div>
+        </div>
+        <button id="pauseButton" class="w-full px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg shadow-lg transition-all duration-200 border-b-4 border-orange-800 flex justify-center items-center hidden text-sm active:border-b-0 active:translate-y-1">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span data-lang-key="pauseBtn">MENU / PAUSE</span>
+        </button>
+    </div>
+    
+    <!-- MODAL: PAUSE -->
+    <div id="pauseModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center text-center">
+            <h2 class="text-3xl font-extrabold text-orange-400 mb-4" data-lang-key="pauseTitle">PERMAINAN DIJEDA</h2>
+            <button id="resumeButton" class="w-full max-w-xs px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-500 border-b-4 border-green-800 mb-4 active:border-b-0 active:translate-y-1" data-lang-key="resumeBtn">LANJUT MAIN</button>
+            <button id="endGameFromPauseButton" class="w-full max-w-xs px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-500 border-b-4 border-red-800 active:border-b-0 active:translate-y-1" data-lang-key="endGameBtn">AKHIRI PERMAINAN</button>
+        </div>
+    </div>
+    
+    <!-- MODAL: MAIN MENU -->
+    <div id="mainMenuModal" class="opacity-0 pointer-events-none">
+        <div class="modal-bg-image"></div>
+        
+        <button id="loginButton" class="absolute top-4 right-4 px-3 py-1 bg-gray-800 text-gray-400 text-xs font-bold rounded border border-gray-600 hover:bg-gray-700 cursor-not-allowed" title="Coming Soon">Login (Coming Soon)</button>
+
+        <div class="modal-content flex flex-col items-center w-full max-w-md relative overflow-visible bg-black/80 backdrop-blur-md">
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-6 text-center drop-shadow-sm" data-lang-key="menuTitle">TYPING SPACE WAR</h1>
+
+            <p class="text-gray-400 text-sm mb-6 italic" id="welcomeUserText">Selamat Datang, Guest!</p>
+            
+            <!-- TOMBOL MULAI -->
+            <button id="startMenuButton" class="w-full py-4 bg-gradient-to-r from-green-600 to-green-500 text-white text-2xl font-bold rounded-xl shadow-lg hover:from-green-500 hover:to-green-400 border-b-4 border-green-800 mb-3 active:border-b-0 active:translate-y-1 tracking-wider">
+                MULAI
+            </button>
+
+            <!-- PILIHAN MODE -->
+            <div id="modeSelectionContainer" class="w-full flex flex-col gap-2 mb-3 hidden animate-fade-in-down">
+                <button id="classicModeButton" class="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold rounded-lg shadow hover:from-blue-500 hover:to-blue-400 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1" data-lang-key="modeClassic">MODE KLASIK</button>
+                <button id="timeModeButton" class="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold rounded-lg shadow hover:from-purple-500 hover:to-purple-400 border-b-4 border-purple-800 active:border-b-0 active:translate-y-1" data-lang-key="modeTime">MODE WPM</button>
+            </div>
+
+            <!-- MULTIPLAYER (LOCKED) -->
+            <button id="multiplayerButton" class="w-full py-3 bg-gradient-to-r from-indigo-700 to-indigo-600 text-gray-300 font-bold rounded-lg shadow-lg border-b-4 border-indigo-900 mb-3 cursor-not-allowed opacity-80" title="Coming Soon">
+                MULTIPLAYER (Segera)
+            </button>
+
+            <!-- TOMBOL MENU BAWAH (SPLIT 3) -->
+            <div class="flex w-full gap-2 mt-2">
+                <button id="settingsButton" class="flex-1 py-3 bg-gray-600 text-white font-bold rounded-lg shadow-lg hover:bg-gray-500 border-b-4 border-gray-800 flex justify-center items-center active:border-b-0 active:translate-y-1 text-xs sm:text-sm">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Settings
+                </button>
+                <button id="shopButton" class="flex-1 py-3 bg-purple-600 text-white font-bold rounded-lg shadow-lg hover:bg-purple-500 border-b-4 border-purple-800 flex justify-center items-center active:border-b-0 active:translate-y-1 text-xs sm:text-sm">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    SHOP
+                </button>
+                <button id="leaderboardButton" class="flex-1 py-3 bg-yellow-600 text-white font-bold rounded-lg shadow-lg hover:bg-yellow-500 border-b-4 border-yellow-800 flex justify-center items-center active:border-b-0 active:translate-y-1">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Rank
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: SHOP (NEW UNIFIED UI) -->
+    <div id="shopModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center w-full max-w-lg h-3/4">
+            <div class="flex justify-between w-full items-center mb-2">
+                <h2 class="text-3xl font-extrabold text-purple-400">COSMIC STORE</h2>
+                <div class="coin-display">
+                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 10a2 2 0 114 0 2 2 0 01-4 0z"></path></svg>
+                    <span id="playerCoinsDisplay">0</span>
+                </div>
+            </div>
+            
+            <div class="w-full overflow-y-auto flex-1 p-2" id="shopContentArea">
+                
+                <!-- Kategori: UI THEMES -->
+                <div class="shop-section-header">UI THEMES</div>
+                <div class="shop-item-card opacity-50 cursor-not-allowed">
+                    <div class="shop-item-info">
+                        <h4>Neon Cyberpunk</h4>
+                        <p>Tema warna neon futuristik</p>
+                    </div>
+                    <button class="bg-gray-700 text-gray-400 px-3 py-1 rounded text-xs font-bold border border-gray-600">LOCKED</button>
+                </div>
+
+                <!-- Kategori: BUNDLES -->
+                <div class="shop-section-header">BUNDLES</div>
+                
+                <!-- OFFICE BUNDLE -->
+                <div class="shop-item-card border border-blue-600 bg-blue-900/20">
+                    <div class="shop-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-blue-400">Office Admin Bundle</h4>
+                            <span class="equipped-badge bg-rare text-[10px] px-1 py-0">RARE</span>
+                        </div>
+                        <p class="text-blue-200/70 text-xs">Skin Mouse Realistis + Popup + Efek Delete</p>
+                    </div>
+                    <button id="buyOfficeBundleBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold border-b-2 border-blue-800 active:border-b-0 active:translate-y-px">
+                        10.000 <span class="text-[10px]">KOIN</span>
+                    </button>
+                </div>
+
+                <div class="shop-item-card opacity-50 cursor-not-allowed mt-2">
+                    <div class="shop-item-info">
+                        <h4>Commander Pack</h4>
+                        <p>Skin Kapten + Efek Emas</p>
+                    </div>
+                    <button class="bg-gray-700 text-gray-400 px-3 py-1 rounded text-xs font-bold border border-gray-600">LOCKED</button>
+                </div>
+
+                <!-- REDEEM CODE SECTION -->
+                <div class="redeem-area">
+                    <label class="block text-xs font-bold text-gray-400 mb-1">REDEEM CODE</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="redeemCodeInput" class="flex-1 bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white font-mono text-sm uppercase focus:outline-none focus:border-purple-500" placeholder="MASUKKAN KODE" style="text-transform:uppercase;">
+                        <button id="redeemButton" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded font-bold text-xs border-b-2 border-green-800 active:border-b-0 active:translate-y-px">KLAIM</button>
+                    </div>
+                    <p id="redeemMessage" class="text-[10px] mt-1 h-3 text-red-400 font-bold"></p>
+                </div>
+
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="w-full flex gap-2 mt-4">
+                 <button id="openLoadoutButton" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-500 border-b-4 border-indigo-800 active:border-b-0 active:translate-y-1">LOADOUT</button>
+                 <button id="closeShopButton" class="flex-1 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500 border-b-4 border-gray-800 active:border-b-0 active:translate-y-1">Tutup Toko</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LOADOUT (NEW) -->
+    <div id="loadoutModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center w-full max-w-lg h-3/4">
+            <h2 class="text-3xl font-extrabold text-indigo-400 mb-4">MY LOADOUT</h2>
+            
+            <div class="w-full overflow-y-auto flex-1 p-2" id="loadoutContentArea">
+                
+                <!-- Kategori: SKIN PLAYER -->
+                <div class="shop-section-header" style="border-color: #818cf8; color: #818cf8; background: rgba(129, 140, 248, 0.1);">SKIN PLAYER</div>
+                
+                <!-- Triangle Ship (DEFAULT/COMMON) -->
+                <div class="loadout-item-card" onclick="equipItem('player', 'TRIANGLE_SHIP')">
+                    <div class="loadout-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-yellow-400">Triangle Ship</h4>
+                            <span class="equipped-badge bg-common">COMMON</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Standard Space Fighter</p>
+                    </div>
+                    <span id="badge_player_TRIANGLE_SHIP" class="equipped-badge bg-green-600 hidden">EQUIPPED</span>
+                </div>
+
+                <!-- Cursor (PREMIUM/RARE - Hidden until bought) -->
+                <div id="item_player_CURSOR_DEFAULT" class="loadout-item-card hidden" onclick="equipItem('player', 'CURSOR_DEFAULT')">
+                    <div class="loadout-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4>Real Mouse Cursor</h4>
+                            <span class="equipped-badge bg-rare">RARE</span>
+                        </div>
+                        <p>Kursor Realistis + Efek Klik</p>
+                    </div>
+                    <span id="badge_player_CURSOR_DEFAULT" class="equipped-badge bg-green-600 hidden">EQUIPPED</span>
+                </div>
+
+                <!-- Kategori: SKIN MUSUH -->
+                <div class="shop-section-header" style="border-color: #fbbf24; color: #fbbf24; background: rgba(251, 191, 36, 0.1);">SKIN MUSUH</div>
+                
+                <!-- Hexagon Enemy (DEFAULT/COMMON) -->
+                <div class="loadout-item-card" onclick="equipItem('enemy', 'TRIANGLE_ENEMY')">
+                    <div class="loadout-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-yellow-400">Hexagon Enemy</h4>
+                            <span class="equipped-badge bg-common">COMMON</span>
+                        </div>
+                        <p class="text-xs text-gray-400">Target Geometris Standar</p>
+                    </div>
+                    <span id="badge_enemy_TRIANGLE_ENEMY" class="equipped-badge bg-green-600 hidden">EQUIPPED</span>
+                </div>
+
+                <!-- Default Folder (PREMIUM/RARE - Hidden until bought) -->
+                <div id="item_enemy_FOLDER_DEFAULT" class="loadout-item-card hidden" onclick="equipItem('enemy', 'FOLDER_DEFAULT')">
+                    <div class="loadout-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4>Cream Folder</h4>
+                            <span class="equipped-badge bg-rare">RARE</span>
+                        </div>
+                        <p>Folder + Menu Popup</p>
+                    </div>
+                    <span id="badge_enemy_FOLDER_DEFAULT" class="equipped-badge bg-green-600 hidden">EQUIPPED</span>
+                </div>
+
+                <!-- Kategori: TEMA UI -->
+                <div class="shop-section-header" style="border-color: #34d399; color: #34d399; background: rgba(52, 211, 153, 0.1);">TEMA UI</div>
+                <div class="loadout-item-card">
+                    <div class="loadout-item-info">
+                        <div class="flex items-center gap-2">
+                            <h4>Basic Space Shooter</h4>
+                            <span class="equipped-badge bg-common">COMMON</span>
+                        </div>
+                        <p>Tampilan standar klasik</p>
+                    </div>
+                    <span class="equipped-badge bg-green-600">EQUIPPED</span>
+                </div>
+
+            </div>
+
+            <button id="backFromLoadoutButton" class="w-full mt-4 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500 border-b-4 border-gray-800 active:border-b-0 active:translate-y-1">Kembali</button>
+        </div>
+    </div>
+
+    <!-- MODAL: LEADERBOARD -->
+    <div id="leaderboardModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center w-full max-w-lg h-3/4">
+            <h2 class="text-3xl font-extrabold text-yellow-400 mb-2">TOP 100 SKOR</h2>
+            <div id="leaderboardLoading" class="text-white mt-4 hidden">Memuat data...</div>
+            <div id="leaderboardError" class="text-red-400 mt-4 text-sm text-center hidden">Gagal memuat. Pastikan API Key sudah dipasang.</div>
+            <div class="w-full overflow-y-auto flex-1">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nama</th>
+                            <th>Skor</th>
+                            <th>Waktu</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Data Leaderboard -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="closeLeaderboardButton" class="w-full mt-4 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500 border-b-4 border-gray-800 active:border-b-0 active:translate-y-1">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MODAL: TIME SETTINGS -->
+    <div id="timeModeSettingsModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center">
+            <h2 class="text-2xl font-bold text-purple-400 mb-4" data-lang-key="timeModeTitle">MODE WPM</h2>
+            <p class="text-gray-300 mb-4" data-lang-key="timeModeSubtitle">Pilih Durasi:</p>
+            <div class="flex flex-col gap-3 w-64">
+                <button data-time="15" class="time-option py-3 bg-blue-600 text-white font-bold rounded-xl border-b-4 border-blue-800 hover:bg-blue-500 active:border-b-0 active:translate-y-1">15 Detik</button>
+                <button data-time="30" class="time-option py-3 bg-blue-600 text-white font-bold rounded-xl border-b-4 border-blue-800 hover:bg-blue-500 active:border-b-0 active:translate-y-1">30 Detik</button>
+                <button data-time="60" class="time-option py-3 bg-blue-600 text-white font-bold rounded-xl border-b-4 border-blue-800 hover:bg-blue-500 active:border-b-0 active:translate-y-1">60 Detik</button>
+            </div>
+            <button id="backFromTimeSettingsButton" class="w-64 mt-6 py-3 bg-gray-600 text-white font-bold rounded-lg shadow-lg hover:bg-gray-500 border-b-4 border-gray-800 active:border-b-0 active:translate-y-1" data-lang-key="backToMenu">Kembali</button>
+        </div>
+    </div>
+
+    <!-- MODAL: SETTINGS -->
+    <div id="settingsModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content flex flex-col items-center w-full max-w-xl">
+            <h2 class="text-3xl font-extrabold text-sky-400 mb-4 text-center" data-lang-key="settingsTitle">PENGATURAN</h2>
+            
+            <div class="w-full bg-gray-800 p-3 rounded-lg mb-3 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2" data-lang-key="usernameLabel">Username (Nama Pemain)</label>
+                <input type="text" id="usernameSettingsInput" maxlength="12" class="w-full p-2 bg-gray-900 text-white border border-gray-500 rounded text-center font-mono uppercase focus:outline-none focus:border-blue-500" placeholder="GUEST">
+            </div>
+
+             <div class="w-full bg-gray-800 p-3 rounded-lg mb-3 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2 text-center" data-lang-key="screenRatio">Rasio Layar</label>
+                <div class="flex w-full rounded overflow-hidden border border-gray-500">
+                    <button id="btnRatioNormal" class="flex-1 py-2 bg-blue-600 text-white text-sm font-bold transition-colors" onclick="setScreenRatio('LANDSCAPE')">Normal (4:3)</button>
+                    <button id="btnRatioPortrait" class="flex-1 py-2 bg-gray-700 text-gray-400 text-sm hover:bg-gray-600 transition-colors" onclick="setScreenRatio('PORTRAIT')">Portrait (HP)</button>
+                </div>
+            </div>
+            <div class="w-full bg-gray-800 p-3 rounded-lg mb-3 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2 text-center" data-lang-key="deviceMode">Input Mode</label>
+                <div class="flex w-full rounded overflow-hidden border border-gray-500">
+                    <button id="btnMobile" class="flex-1 py-2 bg-gray-700 text-gray-400 text-sm hover:bg-gray-600 transition-colors" onclick="setDeviceMode('MOBILE')">HP (Tap)</button>
+                    <button id="btnPC" class="flex-1 py-2 bg-blue-600 text-white text-sm font-bold transition-colors" onclick="setDeviceMode('PC')">PC (Ketik)</button>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-1 text-center italic" id="deviceModeHint">...</p>
+            </div>
+            
+            <div class="w-full bg-gray-800 p-3 rounded-lg mb-3 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2 text-center">Audio</label>
+                <div class="flex w-full gap-2">
+                    <button id="btnToggleBGM" class="flex-1 py-2 bg-blue-600 text-white text-xs font-bold rounded transition-colors border border-blue-500">Musik: ON</button>
+                    <button id="btnToggleSFX" class="flex-1 py-2 bg-blue-600 text-white text-xs font-bold rounded transition-colors border border-blue-500">SFX: ON</button>
+                </div>
+            </div>
+
+            <div class="w-full bg-gray-800 p-3 rounded-lg mb-6 border border-gray-600">
+                <label class="block text-sm font-medium text-gray-300 mb-2" data-lang-key="languageSetting">Bahasa</label>
+                <select id="languageSelector" class="block w-full py-2 px-3 bg-gray-700 text-white border border-gray-500 rounded focus:outline-none">
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <button id="closeSettingsButton" class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 border-b-4 border-blue-800 active:border-b-0 active:translate-y-1" data-lang-key="backToMenu">Kembali (Simpan)</button>
+        </div>
+    </div>
+
+    <!-- MODAL: GAME OVER -->
+    <div id="gameOverModal" class="opacity-0 pointer-events-none">
+        <div class="modal-content text-center w-full max-w-sm">
+            <h2 id="gameOverTitle" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500 mb-4" data-lang-key="gameOverTitle">GAME OVER</h2>
+            <div class="bg-gray-800 p-4 rounded-lg mb-4 border border-gray-700">
+                <p id="finalScoreContainer" class="text-white mb-1"><span data-lang-key="finalScore" class="text-gray-400 text-sm block">Skor Akhir</span> <span id="finalScoreDisplay" class="text-2xl font-bold text-yellow-400">0</span></p>
+                <div id="finalDurationContainer" class="mb-1 hidden">
+                    <p class="text-white"><span data-lang-key="finalDuration" class="text-gray-400 text-sm block">Total Durasi</span> <span id="finalDurationDisplay" class="text-xl font-bold text-cyan-400">00:00</span></p>
+                </div>
+                
+                <!-- WPM STATS TAMBAHAN -->
+                <div id="wpmStatsContainer" class="mb-1 hidden">
+                     <p class="text-white"><span class="text-gray-400 text-sm block">Total Karakter</span> <span id="finalCharsDisplayWPM" class="text-xl font-bold text-orange-400">0</span></p>
+                </div>
+
+                <!-- TOMBOL SUBMIT SCORE -->
+                <div id="submitScoreForm" class="mt-4 pt-3 border-t border-gray-600 hidden">
+                    <p class="text-xs text-green-400 mb-2">Simpan ke Leaderboard sebagai:</p>
+                    <p id="submitPlayerNameDisplay" class="text-lg font-bold text-white font-mono mb-2">GUEST</p>
+                    <button id="submitScoreButton" class="w-full py-2 bg-green-600 text-white text-xs font-bold rounded hover:bg-green-500 transition-colors">KIRIM SKOR</button>
+                    <p id="submitStatus" class="text-[10px] text-gray-400 mt-1 h-3"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-2 border-t border-gray-700 pt-2">
+                    <div><span data-lang-key="totalWords" class="text-gray-400 text-xs block">Kata Benar</span><span id="finalWordsTypedDisplay" class="text-lg font-bold text-lime-400">0</span></div>
+                    <div><span data-lang-key="finalWPM" class="text-gray-400 text-xs block">WPM</span><span id="finalWpmDisplay" class="text-lg font-bold text-purple-400">0</span></div>
+                </div>
+            </div>
+            <div class="flex gap-2 justify-center">
+                <button id="restartButton" class="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg border-b-4 border-blue-800 hover:bg-blue-500 active:border-b-0 active:translate-y-1" data-lang-key="playAgain">Main Lagi</button>
+                <button id="backToMenuButton" class="flex-1 py-3 bg-gray-600 text-white font-bold rounded-lg border-b-4 border-gray-800 hover:bg-gray-500 active:border-b-0 active:translate-y-1" data-lang-key="backToMenuBtn">Menu</button>
+            </div>
+        </div>
+    </div>
+    <p class="text-gray-500 text-[10px] mt-1 opacity-50 z-30" data-lang-key="focusNote">Game Fokus Otomatis.</p>
+
+</div>
+
+<!-- SCRIPT LOADING ORDER -->
+<!-- KITA HANYA PERLU MEMANGGIL MAIN.JS SEBAGAI MODULE -->
+<script type="module" src="main.js"></script>
+
+</body>
+</html>
